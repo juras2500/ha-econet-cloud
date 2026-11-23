@@ -1,0 +1,77 @@
+{
+  "title": "PLUM ecoNET Cloud",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Połącz z ecoNET Cloud",
+        "description": "Wpisz dane konta z econetcloud.eu. Integracja pokazuje parametry rekuperatora i udostępnia obsługiwane biegi, tryby pracy oraz temperatury komfortu. Hasło jest używane tylko przy logowaniu i nie jest zapisywane. Home Assistant przechowuje dane sesji potrzebne do odnawiania połączenia.",
+        "data": {
+          "username": "E-mail ecoNET Cloud",
+          "password": "Hasło konta ecoNET Cloud"
+        }
+      },
+      "installation": {
+        "title": "Wybierz instalację",
+        "data": {
+          "installation_id": "Instalacja"
+        }
+      },
+      "connection": {
+        "title": "Pobierz instalacje ecoNET Cloud",
+        "description": "Konto zostało uwierzytelnione. Ponów pobranie danych instalacji — ponowne wpisanie hasła nie jest potrzebne."
+      }
+    },
+    "error": {
+      "invalid_auth": "ecoNET Cloud odrzucił uwierzytelnienie konta.",
+      "session_auth": "Usługa odrzuciła odnowienie sesji. Zaloguj konto ponownie.",
+      "additional_auth": "Usługa wymaga dodatkowego etapu logowania, np. kodu potwierdzającego.",
+      "cloud_authorization": "Konto jest zalogowane, ale usługa nie nadała dostępu do danych instalacji.",
+      "cannot_connect": "Nie udało się połączyć z usługą ecoNET Cloud.",
+      "no_installations": "Na tym koncie nie znaleziono instalacji.",
+      "wrong_account": "To konto nie ma dostępu do wcześniej wybranej instalacji."
+    },
+    "abort": {
+      "already_configured": "Ta instalacja jest już skonfigurowana.",
+      "not_found": "Nie znaleziono wybranej instalacji.",
+      "reauth_successful": "Dane logowania zostały zaktualizowane."
+    }
+  },
+  "entity": {
+    "select": {
+      "speed": {
+        "name": "Bieg",
+        "state": {
+          "pause": "Pauza",
+          "speed_1": "Bieg 1",
+          "speed_2": "Bieg 2",
+          "speed_3": "Bieg 3",
+          "boost_1": "Boost 1",
+          "boost_2": "Boost 2"
+        }
+      },
+      "operating_mode": {
+        "name": "Tryb pracy",
+        "state": {
+          "manual": "Ręczny",
+          "schedule": "Harmonogram"
+        }
+      }
+    },
+    "number": {
+      "comfort_1": {
+        "name": "Temperatura komfortu biegu 1"
+      },
+      "comfort_2": {
+        "name": "Temperatura komfortu biegu 2"
+      },
+      "comfort_3": {
+        "name": "Temperatura komfortu biegu 3"
+      }
+    },
+    "button": {
+      "stop_boost": {
+        "name": "Zakończ Boost"
+      }
+    }
+  }
+}

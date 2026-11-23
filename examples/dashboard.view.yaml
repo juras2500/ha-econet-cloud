@@ -1,0 +1,256 @@
+title: Rekuperacja
+path: rekuperacja
+icon: mdi:hvac
+type: sections
+max_columns: 4
+sections:
+- type: grid
+  cards:
+  - type: heading
+    heading: Sterowanie
+    icon: mdi:tune-vertical
+    heading_style: title
+  - type: entities
+    show_header_toggle: false
+    entities:
+    - entity: select.ventilation_tryb_pracy
+      name: Tryb pracy
+    - entity: select.ventilation_bieg
+      name: Bieg / Boost
+    - entity: button.ventilation_zakoncz_boost
+      name: Zakończ Boost
+    - type: section
+      label: Temperatura komfortu
+    - entity: number.ventilation_temperatura_komfortu_biegu_1
+      name: Bieg 1
+    - entity: number.ventilation_temperatura_komfortu_biegu_2
+      name: Bieg 2
+    - entity: number.ventilation_temperatura_komfortu_biegu_3
+      name: Bieg 3
+    grid_options:
+      columns: 12
+  - type: markdown
+    content: Biegi 1–3 i Pauza wymagają trybu **Ręcznego**. **Zakończ Boost** wyłącza ręczny Boost, zachowując wybrany
+      tryb pracy.
+    grid_options:
+      columns: 12
+- type: grid
+  cards:
+  - type: heading
+    heading: Praca centrali
+    icon: mdi:hvac
+    heading_style: title
+  - type: tile
+    entity: sensor.ventilation_stan_pracy_centrali
+    name: Tryb pracy
+    icon: mdi:home-air-filter
+    color: teal
+    vertical: false
+    features_position: bottom
+    tap_action:
+      action: more-info
+    grid_options:
+      columns: 12
+      rows: 1
+  - type: tile
+    entity: binary_sensor.ventilation_polaczenie
+    name: Połączenie
+    icon: mdi:cloud-check
+    color: teal
+    vertical: false
+    features_position: bottom
+    tap_action:
+      action: more-info
+    grid_options:
+      columns: 6
+      rows: 1
+  - type: tile
+    entity: sensor.ventilation_aktualny_bieg
+    name: Aktualny bieg
+    icon: mdi:fan
+    color: teal
+    vertical: false
+    features_position: bottom
+    tap_action:
+      action: more-info
+    grid_options:
+      columns: 6
+      rows: 1
+  - type: tile
+    entity: sensor.ventilation_stan_bypass
+    name: Bypass
+    icon: mdi:call-split
+    color: teal
+    vertical: false
+    features_position: bottom
+    tap_action:
+      action: more-info
+    grid_options:
+      columns: 12
+      rows: 1
+  - type: heading
+    heading: Przepływy
+    icon: mdi:air-filter
+    heading_style: title
+  - type: tile
+    entity: sensor.ventilation_wentylator_nawiewu_aktualne_m3_h
+    name: Nawiew do domu
+    icon: mdi:home-import-outline
+    color: teal
+    vertical: false
+    features_position: bottom
+    tap_action:
+      action: more-info
+    grid_options:
+      columns: 6
+      rows: 1
+  - type: tile
+    entity: sensor.ventilation_wentylator_wywiewu_aktualne_m3_h
+    name: Wywiew z domu
+    icon: mdi:home-export-outline
+    color: teal
+    vertical: false
+    features_position: bottom
+    tap_action:
+      action: more-info
+    grid_options:
+      columns: 6
+      rows: 1
+  - type: history-graph
+    title: Przepływy · 24 godziny
+    hours_to_show: 24
+    entities:
+    - entity: sensor.ventilation_wentylator_nawiewu_aktualne_m3_h
+      name: Nawiew
+    - entity: sensor.ventilation_wentylator_wywiewu_aktualne_m3_h
+      name: Wywiew
+    grid_options:
+      columns: 12
+- type: grid
+  cards:
+  - type: heading
+    heading: Temperatury i powietrze
+    icon: mdi:thermometer
+    heading_style: title
+  - type: tile
+    entity: sensor.ventilation_temp_czerpni
+    name: Czerpnia · z zewnątrz
+    icon: mdi:weather-partly-cloudy
+    color: teal
+    vertical: false
+    features_position: bottom
+    tap_action:
+      action: more-info
+    grid_options:
+      columns: 6
+      rows: 1
+  - type: tile
+    entity: sensor.ventilation_temp_nawiewu
+    name: Nawiew · do domu
+    icon: mdi:home-import-outline
+    color: teal
+    vertical: false
+    features_position: bottom
+    tap_action:
+      action: more-info
+    grid_options:
+      columns: 6
+      rows: 1
+  - type: tile
+    entity: sensor.ventilation_temp_wywiewu
+    name: Wywiew · z domu
+    icon: mdi:home-export-outline
+    color: teal
+    vertical: false
+    features_position: bottom
+    tap_action:
+      action: more-info
+    grid_options:
+      columns: 6
+      rows: 1
+  - type: tile
+    entity: sensor.ventilation_temp_wyrzutni
+    name: Wyrzutnia · na zewnątrz
+    icon: mdi:weather-windy
+    color: teal
+    vertical: false
+    features_position: bottom
+    tap_action:
+      action: more-info
+    grid_options:
+      columns: 6
+      rows: 1
+  - type: tile
+    entity: sensor.ventilation_wilgotnosc
+    name: Wilgotność
+    icon: mdi:water-percent
+    color: teal
+    vertical: false
+    features_position: bottom
+    tap_action:
+      action: more-info
+    grid_options:
+      columns: 12
+      rows: 1
+  - type: history-graph
+    title: Temperatury · 24 godziny
+    hours_to_show: 24
+    entities:
+    - entity: sensor.ventilation_temp_czerpni
+      name: Czerpnia
+    - entity: sensor.ventilation_temp_nawiewu
+      name: Nawiew
+    - entity: sensor.ventilation_temp_wywiewu
+      name: Wywiew
+    - entity: sensor.ventilation_temp_wyrzutni
+      name: Wyrzutnia
+    grid_options:
+      columns: 12
+- type: grid
+  cards:
+  - type: heading
+    heading: Filtry
+    icon: mdi:air-filter
+    heading_style: title
+  - type: tile
+    entity: sensor.ventilation_wymiana_filtrow
+    name: Do wymiany filtrów
+    icon: mdi:calendar-clock
+    color: teal
+    vertical: false
+    features_position: bottom
+    tap_action:
+      action: more-info
+    grid_options:
+      columns: 12
+      rows: 1
+  - type: gauge
+    entity: sensor.ventilation_filtr_nawiew
+    name: Nawiew · zużycie
+    min: 0
+    max: 100
+    needle: true
+    severity:
+      green: 0
+      yellow: 70
+      red: 90
+    grid_options:
+      columns: 6
+      rows: 3
+  - type: gauge
+    entity: sensor.ventilation_filtr_wywiew
+    name: Wywiew · zużycie
+    min: 0
+    max: 100
+    needle: true
+    severity:
+      green: 0
+      yellow: 70
+      red: 90
+    grid_options:
+      columns: 6
+      rows: 3
+  - type: markdown
+    content: Im wyższy procent, tym bliżej wymiany filtrów. Pozostały czas jest odliczany przez sterownik centrali.
+    grid_options:
+      columns: 12

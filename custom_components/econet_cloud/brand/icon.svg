@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <circle cx="128" cy="128" r="108" fill="none" stroke="#36b6a3" stroke-width="10"/>
+  <defs><path id="blade" d="M128 90 C100 40 185 35 184 85 C184 107 147 122 128 128 C120 115 116 100 128 90Z"/></defs>
+  <g fill="#36b6a3"><use href="#blade"/><use href="#blade" transform="rotate(120 128 128)"/><use href="#blade" transform="rotate(240 128 128)"/></g>
+  <circle cx="128" cy="128" r="15" fill="#123b45" stroke="#36b6a3" stroke-width="6"/>
+</svg>

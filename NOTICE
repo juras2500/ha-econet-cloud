@@ -1,0 +1,30 @@
+PLUM ecoNET Cloud for Home Assistant
+
+This community project was developed for a Home Assistant user installation
+with assistance from OpenAI Codex. It is not an official PLUM, SPIROFLEX or
+Home Assistant project.
+
+Protocol references:
+- The ecoNET Cloud web application, https://econetcloud.eu/.
+- m-szopinski/econet-api-client,
+  https://github.com/m-szopinski/econet-api-client.
+  Version 1.0.7 declares the ISC license in its package metadata. It was used
+  as a protocol/signature reference; its TypeScript implementation is not
+  bundled in this repository.
+- AWS Cognito, Signature Version 4 and MQTT protocol specifications.
+
+Runtime dependency:
+- pycognito 2024.5.1 (Apache-2.0), https://github.com/pvizeli/pycognito.
+  It and its dependencies are installed through Home Assistant's dependency
+  management, not vendored here. Their licenses remain applicable.
+
+The small profile fixture in tests contains hand-assembled interface facts
+(parameter identifiers and supported options), not a complete manufacturer
+profile, firmware, web application or manufacturer graphics. The icon in
+custom_components/econet_cloud/brand/ was drawn for this project.
+
+The optional PV examples are adaptations of the project's own Home Assistant
+automations, using generic placeholder entities. ecoNET300 itself is a
+separate project maintained at
+https://github.com/jontofront/ecoNET-300-Home-Assistant-Integration
+and derived from pblxptr's original implementation; its code is not bundled.

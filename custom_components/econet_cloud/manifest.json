@@ -1,0 +1,16 @@
+{
+  "domain": "econet_cloud",
+  "name": "PLUM ecoNET Cloud",
+  "version": "0.2.1",
+  "config_flow": true,
+  "documentation": "https://github.com/juras2500/ha-econet-cloud",
+  "integration_type": "hub",
+  "iot_class": "cloud_push",
+  "requirements": [
+    "pycognito==2024.5.1"
+  ],
+  "codeowners": [
+    "@juras2500"
+  ],
+  "issue_tracker": "https://github.com/juras2500/ha-econet-cloud/issues"
+}

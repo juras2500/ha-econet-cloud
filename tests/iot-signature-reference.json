@@ -1,0 +1,4 @@
+{
+  "date": "2026-11-22T22:00:00.000Z",
+  "expected": "wss://example-ats.iot.eu-central-1.amazonaws.com/mqtt?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIDEXAMPLE%2F20261122%2Feu-central-1%2Fiotdevicegateway%2Faws4_request&X-Amz-Date=20261122T220000Z&X-Amz-SignedHeaders=host&X-Amz-Signature=a938c9ab09dfa4ea3609cae29a4cc5b6f1cb7191f3cadb8509b64296a3f6016a&X-Amz-Security-Token=example%2Ftest%2Btoken%3D"
+}

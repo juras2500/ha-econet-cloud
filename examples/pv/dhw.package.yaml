@@ -1,0 +1,130 @@
+input_boolean:
+  example_pv_dhw_enabled:
+    name: Example PV DHW enabled
+    initial: false
+    icon: mdi:solar-power
+automation:
+- id: example_pv_dhw
+  alias: Example PV DHW
+  description: 'Example: stable PV export and next-hour forecast request one DHW cycle, at most once per day. Map
+    placeholder entities before enabling.'
+  triggers:
+  - trigger: time_pattern
+    minutes: /5
+    id: pomiar_pv
+  conditions:
+  - condition: template
+    value_template: |-
+      {% set time_now = as_timestamp(now()) %}
+      {% set day_start = as_timestamp(today_at('00:00')) %}
+      {% set grid = states['sensor.grid_power'] %}
+      {% set pv = states['sensor.pv_power'] %}
+      {% set forecast = states['sensor.pv_forecast_next_hour'] %}
+      {% set heater = states['water_heater.heat_pump_dhw'] %}
+      {% set boost = states['button.heat_pump_dhw_once'] %}
+      {% set inputs = dict(
+        daylight=is_state('sun.sun', 'above_horizon'),
+        alarm_clear=is_state('binary_sensor.heat_pump_alarm', 'off'),
+        can_heat=is_state('water_heater.heat_pump_dhw', ['on', 'schedule']),
+        can_boost=(boost is not none and boost.state != 'unavailable'),
+        last_press=as_timestamp(states('button.heat_pump_dhw_once'), 0),
+        heater_age=time_now - as_timestamp(heater.last_reported if heater is not none else none, 0),
+        water=state_attr('water_heater.heat_pump_dhw', 'current_temperature') | float(none),
+        target=state_attr('water_heater.heat_pump_dhw', 'temperature') | float(none),
+        grid_age=time_now - as_timestamp(grid.last_reported if grid is not none else none, 0),
+        grid_w=states('sensor.grid_power') | float(none),
+        pv_age=time_now - as_timestamp(pv.last_reported if pv is not none else none, 0),
+        pv_w=states('sensor.pv_power') | float(none),
+        forecast_age=time_now - as_timestamp(forecast.last_reported if forecast is not none else none, 0),
+        forecast_kwh=states('sensor.pv_forecast_next_hour') | float(none)
+      ) %}
+      {% set eligible = (
+        is_state('input_boolean.example_pv_dhw_enabled', 'on') and inputs.daylight and inputs.alarm_clear and inputs.can_heat and inputs.can_boost
+        and inputs.last_press < day_start and 0 <= inputs.heater_age < 120
+        and inputs.water is not none and inputs.target is not none
+        and inputs.target - inputs.water >= 5
+        and 0 <= inputs.grid_age < 120 and inputs.grid_w is not none and inputs.grid_w <= -2500
+        and 0 <= inputs.pv_age < 120 and inputs.pv_w is not none and inputs.pv_w >= 2500
+        and 0 <= inputs.forecast_age < 7200 and inputs.forecast_kwh is not none and inputs.forecast_kwh >= 1.5
+      ) %}
+      {{ eligible }}
+  actions:
+  - alias: Sprawdź warunki przez 10 minut
+    wait_template: |-
+      {% set time_now = as_timestamp(now()) %}
+      {% set day_start = as_timestamp(today_at('00:00')) %}
+      {% set grid = states['sensor.grid_power'] %}
+      {% set pv = states['sensor.pv_power'] %}
+      {% set forecast = states['sensor.pv_forecast_next_hour'] %}
+      {% set heater = states['water_heater.heat_pump_dhw'] %}
+      {% set boost = states['button.heat_pump_dhw_once'] %}
+      {% set inputs = dict(
+        daylight=is_state('sun.sun', 'above_horizon'),
+        alarm_clear=is_state('binary_sensor.heat_pump_alarm', 'off'),
+        can_heat=is_state('water_heater.heat_pump_dhw', ['on', 'schedule']),
+        can_boost=(boost is not none and boost.state != 'unavailable'),
+        last_press=as_timestamp(states('button.heat_pump_dhw_once'), 0),
+        heater_age=time_now - as_timestamp(heater.last_reported if heater is not none else none, 0),
+        water=state_attr('water_heater.heat_pump_dhw', 'current_temperature') | float(none),
+        target=state_attr('water_heater.heat_pump_dhw', 'temperature') | float(none),
+        grid_age=time_now - as_timestamp(grid.last_reported if grid is not none else none, 0),
+        grid_w=states('sensor.grid_power') | float(none),
+        pv_age=time_now - as_timestamp(pv.last_reported if pv is not none else none, 0),
+        pv_w=states('sensor.pv_power') | float(none),
+        forecast_age=time_now - as_timestamp(forecast.last_reported if forecast is not none else none, 0),
+        forecast_kwh=states('sensor.pv_forecast_next_hour') | float(none)
+      ) %}
+      {% set eligible = (
+        is_state('input_boolean.example_pv_dhw_enabled', 'on') and inputs.daylight and inputs.alarm_clear and inputs.can_heat and inputs.can_boost
+        and inputs.last_press < day_start and 0 <= inputs.heater_age < 120
+        and inputs.water is not none and inputs.target is not none
+        and inputs.target - inputs.water >= 5
+        and 0 <= inputs.grid_age < 120 and inputs.grid_w is not none and inputs.grid_w <= -2500
+        and 0 <= inputs.pv_age < 120 and inputs.pv_w is not none and inputs.pv_w >= 2500
+        and 0 <= inputs.forecast_age < 7200 and inputs.forecast_kwh is not none and inputs.forecast_kwh >= 1.5
+      ) %}
+      {{ not eligible }}
+    timeout: 00:10:00
+    continue_on_timeout: true
+  - alias: Potwierdź, że warunki się utrzymały
+    condition: template
+    value_template: |-
+      {% set time_now = as_timestamp(now()) %}
+      {% set day_start = as_timestamp(today_at('00:00')) %}
+      {% set grid = states['sensor.grid_power'] %}
+      {% set pv = states['sensor.pv_power'] %}
+      {% set forecast = states['sensor.pv_forecast_next_hour'] %}
+      {% set heater = states['water_heater.heat_pump_dhw'] %}
+      {% set boost = states['button.heat_pump_dhw_once'] %}
+      {% set inputs = dict(
+        daylight=is_state('sun.sun', 'above_horizon'),
+        alarm_clear=is_state('binary_sensor.heat_pump_alarm', 'off'),
+        can_heat=is_state('water_heater.heat_pump_dhw', ['on', 'schedule']),
+        can_boost=(boost is not none and boost.state != 'unavailable'),
+        last_press=as_timestamp(states('button.heat_pump_dhw_once'), 0),
+        heater_age=time_now - as_timestamp(heater.last_reported if heater is not none else none, 0),
+        water=state_attr('water_heater.heat_pump_dhw', 'current_temperature') | float(none),
+        target=state_attr('water_heater.heat_pump_dhw', 'temperature') | float(none),
+        grid_age=time_now - as_timestamp(grid.last_reported if grid is not none else none, 0),
+        grid_w=states('sensor.grid_power') | float(none),
+        pv_age=time_now - as_timestamp(pv.last_reported if pv is not none else none, 0),
+        pv_w=states('sensor.pv_power') | float(none),
+        forecast_age=time_now - as_timestamp(forecast.last_reported if forecast is not none else none, 0),
+        forecast_kwh=states('sensor.pv_forecast_next_hour') | float(none)
+      ) %}
+      {% set eligible = (
+        is_state('input_boolean.example_pv_dhw_enabled', 'on') and inputs.daylight and inputs.alarm_clear and inputs.can_heat and inputs.can_boost
+        and inputs.last_press < day_start and 0 <= inputs.heater_age < 120
+        and inputs.water is not none and inputs.target is not none
+        and inputs.target - inputs.water >= 5
+        and 0 <= inputs.grid_age < 120 and inputs.grid_w is not none and inputs.grid_w <= -2500
+        and 0 <= inputs.pv_age < 120 and inputs.pv_w is not none and inputs.pv_w >= 2500
+        and 0 <= inputs.forecast_age < 7200 and inputs.forecast_kwh is not none and inputs.forecast_kwh >= 1.5
+      ) %}
+      {{ not wait.completed and eligible }}
+  - alias: Zleć jednorazowe nagrzanie CWU
+    action: button.press
+    target:
+      entity_id: button.heat_pump_dhw_once
+  mode: single
+  max_exceeded: silent

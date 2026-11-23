@@ -1,0 +1,476 @@
+input_boolean:
+  example_pv_co_enabled:
+    name: Example PV CO enabled
+    initial: false
+    icon: mdi:solar-power
+input_text:
+  example_pv_co_session:
+    name: Example PV CO session
+    max: 255
+automation:
+- id: example_pv_co
+  alias: Example PV CO
+  description: 'Example: temporary comfort boost by at most 0.5 C, capped at 23.2 C, at most one hour and once per
+    day; persistent checkpoint and manual-change detection.'
+  triggers:
+  - trigger: time_pattern
+    minutes: /1
+  - trigger: homeassistant
+    event: start
+  conditions:
+  - condition: template
+    value_template: |-
+      {% set timestamp = as_timestamp(now()) %}
+      {% set day = now().strftime('%Y-%m-%d') %}
+      {% set raw_session = states('input_text.example_pv_co_session') | from_json(none) %}
+      {% set session = raw_session if raw_session is mapping else {} %}
+      {% macro recent(entity_id, limit) %}
+        {% set reading = states[entity_id] %}
+        {{ reading is not none and 0 <= timestamp - as_timestamp(reading.last_reported, 0) < limit }}
+      {% endmacro %}
+      {% set readings = dict(
+        memory_ready=raw_session is mapping,
+        comfort=states('number.heat_pump_comfort_target') | float(none),
+        lower=state_attr('number.heat_pump_comfort_target', 'min') | float(none),
+        upper=state_attr('number.heat_pump_comfort_target', 'max') | float(none),
+        room=states('sensor.heating_room_temperature') | float(none),
+        outdoor=states('sensor.outdoor_temperature') | float(none),
+        room_live=recent('sensor.heating_room_temperature', 120) | bool(false),
+        controller_live=is_state('binary_sensor.heat_pump_live', 'on'),
+        normal_mode=is_state('select.heat_pump_heating_mode', '1'),
+        central_heating=is_state('sensor.heat_pump_three_way_valve', 'central_heating'),
+        no_alarm=is_state('binary_sensor.heat_pump_alarm', 'off'),
+        dhw_idle=state_attr('automation.example_pv_dhw', 'current') | int(0) == 0,
+        daylight=is_state('sun.sun', 'above_horizon'),
+        sunset=as_timestamp(state_attr('sun.sun', 'next_setting'), 0),
+        grid_w=states('sensor.grid_power') | float(none),
+        grid_live=recent('sensor.grid_power', 120) | bool(false),
+        pv_w=states('sensor.pv_power') | float(none),
+        pv_live=recent('sensor.pv_power', 120) | bool(false),
+        forecast_kwh=states('sensor.pv_forecast_next_hour') | float(none),
+        forecast_live=recent('sensor.pv_forecast_next_hour', 7200) | bool(false)
+      ) %}
+      {% set comfort = readings.comfort %}
+      {% set bumped = ([comfort + 0.5, 23.2] | min | round(1)) if comfort is number else none %}
+      {% set active = "until" in session %}
+      {% set valid_session = active and session.until is number and session.baseline is number and session.bumped is number
+           and readings.lower is number and readings.upper is number
+           and readings.lower <= session.baseline < session.bumped <= [readings.upper, 23.2] | min
+           and session.bumped - session.baseline <= 0.51 %}
+      {% set same_target = valid_session and comfort is number and ((comfort - session.bumped) | abs) < 0.05 %}
+      {% set has_export = readings.grid_live and readings.grid_w is number and readings.grid_w <= -2500 %}
+      {% set has_pv = readings.pv_live and readings.pv_w is number and readings.pv_w >= 2500 %}
+      {% set sun_window = readings.daylight and 5400 <= readings.sunset - timestamp <= 18000 %}
+      {% set needs_heat = readings.room_live and readings.room is number and bumped is number and bumped - readings.room >= 0.15 %}
+      {% set heating_season = readings.outdoor is number and -25 <= readings.outdoor <= 15 %}
+      {% set can_start = is_state('input_boolean.example_pv_co_enabled', 'on') and readings.memory_ready and not active and session.get("day") != day and readings.controller_live
+           and readings.normal_mode and readings.central_heating and readings.no_alarm and readings.dhw_idle
+           and sun_window and needs_heat and heating_season and has_export and has_pv
+           and readings.forecast_live and readings.forecast_kwh is number and readings.forecast_kwh >= 1.5
+           and comfort is number and readings.lower is number and readings.upper is number
+           and readings.lower <= comfort < bumped <= readings.upper %}
+      {% set should_end = active and (not is_state('input_boolean.example_pv_co_enabled', 'on') or timestamp >= session.until | float(0)
+           or not readings.daylight or not readings.normal_mode or not readings.no_alarm or not readings.central_heating
+           or not readings.room_live or readings.room is none or (valid_session and readings.room >= session.bumped)
+           or not readings.grid_live or readings.grid_w is none or readings.grid_w > 500
+           or not readings.pv_live or readings.pv_w is none or readings.pv_w < 1000) %}
+      {% set decision = "forget" if valid_session and readings.controller_live and comfort is number and not same_target
+           else "restore" if same_target and readings.controller_live and should_end
+           else "start" if can_start else "idle" %}
+      {{ decision != "idle" }}
+  actions:
+  - variables:
+      next_action: |-
+        {% set timestamp = as_timestamp(now()) %}
+        {% set day = now().strftime('%Y-%m-%d') %}
+        {% set raw_session = states('input_text.example_pv_co_session') | from_json(none) %}
+        {% set session = raw_session if raw_session is mapping else {} %}
+        {% macro recent(entity_id, limit) %}
+          {% set reading = states[entity_id] %}
+          {{ reading is not none and 0 <= timestamp - as_timestamp(reading.last_reported, 0) < limit }}
+        {% endmacro %}
+        {% set readings = dict(
+          memory_ready=raw_session is mapping,
+          comfort=states('number.heat_pump_comfort_target') | float(none),
+          lower=state_attr('number.heat_pump_comfort_target', 'min') | float(none),
+          upper=state_attr('number.heat_pump_comfort_target', 'max') | float(none),
+          room=states('sensor.heating_room_temperature') | float(none),
+          outdoor=states('sensor.outdoor_temperature') | float(none),
+          room_live=recent('sensor.heating_room_temperature', 120) | bool(false),
+          controller_live=is_state('binary_sensor.heat_pump_live', 'on'),
+          normal_mode=is_state('select.heat_pump_heating_mode', '1'),
+          central_heating=is_state('sensor.heat_pump_three_way_valve', 'central_heating'),
+          no_alarm=is_state('binary_sensor.heat_pump_alarm', 'off'),
+          dhw_idle=state_attr('automation.example_pv_dhw', 'current') | int(0) == 0,
+          daylight=is_state('sun.sun', 'above_horizon'),
+          sunset=as_timestamp(state_attr('sun.sun', 'next_setting'), 0),
+          grid_w=states('sensor.grid_power') | float(none),
+          grid_live=recent('sensor.grid_power', 120) | bool(false),
+          pv_w=states('sensor.pv_power') | float(none),
+          pv_live=recent('sensor.pv_power', 120) | bool(false),
+          forecast_kwh=states('sensor.pv_forecast_next_hour') | float(none),
+          forecast_live=recent('sensor.pv_forecast_next_hour', 7200) | bool(false)
+        ) %}
+        {% set comfort = readings.comfort %}
+        {% set bumped = ([comfort + 0.5, 23.2] | min | round(1)) if comfort is number else none %}
+        {% set active = "until" in session %}
+        {% set valid_session = active and session.until is number and session.baseline is number and session.bumped is number
+             and readings.lower is number and readings.upper is number
+             and readings.lower <= session.baseline < session.bumped <= [readings.upper, 23.2] | min
+             and session.bumped - session.baseline <= 0.51 %}
+        {% set same_target = valid_session and comfort is number and ((comfort - session.bumped) | abs) < 0.05 %}
+        {% set has_export = readings.grid_live and readings.grid_w is number and readings.grid_w <= -2500 %}
+        {% set has_pv = readings.pv_live and readings.pv_w is number and readings.pv_w >= 2500 %}
+        {% set sun_window = readings.daylight and 5400 <= readings.sunset - timestamp <= 18000 %}
+        {% set needs_heat = readings.room_live and readings.room is number and bumped is number and bumped - readings.room >= 0.15 %}
+        {% set heating_season = readings.outdoor is number and -25 <= readings.outdoor <= 15 %}
+        {% set can_start = is_state('input_boolean.example_pv_co_enabled', 'on') and readings.memory_ready and not active and session.get("day") != day and readings.controller_live
+             and readings.normal_mode and readings.central_heating and readings.no_alarm and readings.dhw_idle
+             and sun_window and needs_heat and heating_season and has_export and has_pv
+             and readings.forecast_live and readings.forecast_kwh is number and readings.forecast_kwh >= 1.5
+             and comfort is number and readings.lower is number and readings.upper is number
+             and readings.lower <= comfort < bumped <= readings.upper %}
+        {% set should_end = active and (not is_state('input_boolean.example_pv_co_enabled', 'on') or timestamp >= session.until | float(0)
+             or not readings.daylight or not readings.normal_mode or not readings.no_alarm or not readings.central_heating
+             or not readings.room_live or readings.room is none or (valid_session and readings.room >= session.bumped)
+             or not readings.grid_live or readings.grid_w is none or readings.grid_w > 500
+             or not readings.pv_live or readings.pv_w is none or readings.pv_w < 1000) %}
+        {% set decision = "forget" if valid_session and readings.controller_live and comfort is number and not same_target
+             else "restore" if same_target and readings.controller_live and should_end
+             else "start" if can_start else "idle" %}
+        {{ decision }}
+      session_day: |-
+        {% set timestamp = as_timestamp(now()) %}
+        {% set day = now().strftime('%Y-%m-%d') %}
+        {% set raw_session = states('input_text.example_pv_co_session') | from_json(none) %}
+        {% set session = raw_session if raw_session is mapping else {} %}
+        {% macro recent(entity_id, limit) %}
+          {% set reading = states[entity_id] %}
+          {{ reading is not none and 0 <= timestamp - as_timestamp(reading.last_reported, 0) < limit }}
+        {% endmacro %}
+        {% set readings = dict(
+          memory_ready=raw_session is mapping,
+          comfort=states('number.heat_pump_comfort_target') | float(none),
+          lower=state_attr('number.heat_pump_comfort_target', 'min') | float(none),
+          upper=state_attr('number.heat_pump_comfort_target', 'max') | float(none),
+          room=states('sensor.heating_room_temperature') | float(none),
+          outdoor=states('sensor.outdoor_temperature') | float(none),
+          room_live=recent('sensor.heating_room_temperature', 120) | bool(false),
+          controller_live=is_state('binary_sensor.heat_pump_live', 'on'),
+          normal_mode=is_state('select.heat_pump_heating_mode', '1'),
+          central_heating=is_state('sensor.heat_pump_three_way_valve', 'central_heating'),
+          no_alarm=is_state('binary_sensor.heat_pump_alarm', 'off'),
+          dhw_idle=state_attr('automation.example_pv_dhw', 'current') | int(0) == 0,
+          daylight=is_state('sun.sun', 'above_horizon'),
+          sunset=as_timestamp(state_attr('sun.sun', 'next_setting'), 0),
+          grid_w=states('sensor.grid_power') | float(none),
+          grid_live=recent('sensor.grid_power', 120) | bool(false),
+          pv_w=states('sensor.pv_power') | float(none),
+          pv_live=recent('sensor.pv_power', 120) | bool(false),
+          forecast_kwh=states('sensor.pv_forecast_next_hour') | float(none),
+          forecast_live=recent('sensor.pv_forecast_next_hour', 7200) | bool(false)
+        ) %}
+        {{ session.get("day", day) }}
+      previous_value: |-
+        {% set timestamp = as_timestamp(now()) %}
+        {% set day = now().strftime('%Y-%m-%d') %}
+        {% set raw_session = states('input_text.example_pv_co_session') | from_json(none) %}
+        {% set session = raw_session if raw_session is mapping else {} %}
+        {% macro recent(entity_id, limit) %}
+          {% set reading = states[entity_id] %}
+          {{ reading is not none and 0 <= timestamp - as_timestamp(reading.last_reported, 0) < limit }}
+        {% endmacro %}
+        {% set readings = dict(
+          memory_ready=raw_session is mapping,
+          comfort=states('number.heat_pump_comfort_target') | float(none),
+          lower=state_attr('number.heat_pump_comfort_target', 'min') | float(none),
+          upper=state_attr('number.heat_pump_comfort_target', 'max') | float(none),
+          room=states('sensor.heating_room_temperature') | float(none),
+          outdoor=states('sensor.outdoor_temperature') | float(none),
+          room_live=recent('sensor.heating_room_temperature', 120) | bool(false),
+          controller_live=is_state('binary_sensor.heat_pump_live', 'on'),
+          normal_mode=is_state('select.heat_pump_heating_mode', '1'),
+          central_heating=is_state('sensor.heat_pump_three_way_valve', 'central_heating'),
+          no_alarm=is_state('binary_sensor.heat_pump_alarm', 'off'),
+          dhw_idle=state_attr('automation.example_pv_dhw', 'current') | int(0) == 0,
+          daylight=is_state('sun.sun', 'above_horizon'),
+          sunset=as_timestamp(state_attr('sun.sun', 'next_setting'), 0),
+          grid_w=states('sensor.grid_power') | float(none),
+          grid_live=recent('sensor.grid_power', 120) | bool(false),
+          pv_w=states('sensor.pv_power') | float(none),
+          pv_live=recent('sensor.pv_power', 120) | bool(false),
+          forecast_kwh=states('sensor.pv_forecast_next_hour') | float(none),
+          forecast_live=recent('sensor.pv_forecast_next_hour', 7200) | bool(false)
+        ) %}
+        {{ session.get("baseline") }}
+      raised_value: |-
+        {% set timestamp = as_timestamp(now()) %}
+        {% set day = now().strftime('%Y-%m-%d') %}
+        {% set raw_session = states('input_text.example_pv_co_session') | from_json(none) %}
+        {% set session = raw_session if raw_session is mapping else {} %}
+        {% macro recent(entity_id, limit) %}
+          {% set reading = states[entity_id] %}
+          {{ reading is not none and 0 <= timestamp - as_timestamp(reading.last_reported, 0) < limit }}
+        {% endmacro %}
+        {% set readings = dict(
+          memory_ready=raw_session is mapping,
+          comfort=states('number.heat_pump_comfort_target') | float(none),
+          lower=state_attr('number.heat_pump_comfort_target', 'min') | float(none),
+          upper=state_attr('number.heat_pump_comfort_target', 'max') | float(none),
+          room=states('sensor.heating_room_temperature') | float(none),
+          outdoor=states('sensor.outdoor_temperature') | float(none),
+          room_live=recent('sensor.heating_room_temperature', 120) | bool(false),
+          controller_live=is_state('binary_sensor.heat_pump_live', 'on'),
+          normal_mode=is_state('select.heat_pump_heating_mode', '1'),
+          central_heating=is_state('sensor.heat_pump_three_way_valve', 'central_heating'),
+          no_alarm=is_state('binary_sensor.heat_pump_alarm', 'off'),
+          dhw_idle=state_attr('automation.example_pv_dhw', 'current') | int(0) == 0,
+          daylight=is_state('sun.sun', 'above_horizon'),
+          sunset=as_timestamp(state_attr('sun.sun', 'next_setting'), 0),
+          grid_w=states('sensor.grid_power') | float(none),
+          grid_live=recent('sensor.grid_power', 120) | bool(false),
+          pv_w=states('sensor.pv_power') | float(none),
+          pv_live=recent('sensor.pv_power', 120) | bool(false),
+          forecast_kwh=states('sensor.pv_forecast_next_hour') | float(none),
+          forecast_live=recent('sensor.pv_forecast_next_hour', 7200) | bool(false)
+        ) %}
+        {{ session.get("bumped") }}
+  - choose:
+    - alias: Zachowaj ręczną nastawę
+      conditions:
+      - condition: template
+        value_template: '{{ next_action == "forget" }}'
+      sequence:
+      - action: input_text.set_value
+        target:
+          entity_id: input_text.example_pv_co_session
+        data:
+          value: '{{ {"day": session_day} | to_json }}'
+    - alias: Przywróć nastawę Komfort
+      conditions:
+      - condition: template
+        value_template: '{{ next_action == "restore" }}'
+      sequence:
+      - condition: template
+        value_template: |-
+          {% set timestamp = as_timestamp(now()) %}
+          {% set day = now().strftime('%Y-%m-%d') %}
+          {% set raw_session = states('input_text.example_pv_co_session') | from_json(none) %}
+          {% set session = raw_session if raw_session is mapping else {} %}
+          {% macro recent(entity_id, limit) %}
+            {% set reading = states[entity_id] %}
+            {{ reading is not none and 0 <= timestamp - as_timestamp(reading.last_reported, 0) < limit }}
+          {% endmacro %}
+          {% set readings = dict(
+            memory_ready=raw_session is mapping,
+            comfort=states('number.heat_pump_comfort_target') | float(none),
+            lower=state_attr('number.heat_pump_comfort_target', 'min') | float(none),
+            upper=state_attr('number.heat_pump_comfort_target', 'max') | float(none),
+            room=states('sensor.heating_room_temperature') | float(none),
+            outdoor=states('sensor.outdoor_temperature') | float(none),
+            room_live=recent('sensor.heating_room_temperature', 120) | bool(false),
+            controller_live=is_state('binary_sensor.heat_pump_live', 'on'),
+            normal_mode=is_state('select.heat_pump_heating_mode', '1'),
+            central_heating=is_state('sensor.heat_pump_three_way_valve', 'central_heating'),
+            no_alarm=is_state('binary_sensor.heat_pump_alarm', 'off'),
+            dhw_idle=state_attr('automation.example_pv_dhw', 'current') | int(0) == 0,
+            daylight=is_state('sun.sun', 'above_horizon'),
+            sunset=as_timestamp(state_attr('sun.sun', 'next_setting'), 0),
+            grid_w=states('sensor.grid_power') | float(none),
+            grid_live=recent('sensor.grid_power', 120) | bool(false),
+            pv_w=states('sensor.pv_power') | float(none),
+            pv_live=recent('sensor.pv_power', 120) | bool(false),
+            forecast_kwh=states('sensor.pv_forecast_next_hour') | float(none),
+            forecast_live=recent('sensor.pv_forecast_next_hour', 7200) | bool(false)
+          ) %}
+          {% set comfort = readings.comfort %}
+          {% set bumped = ([comfort + 0.5, 23.2] | min | round(1)) if comfort is number else none %}
+          {% set active = "until" in session %}
+          {% set valid_session = active and session.until is number and session.baseline is number and session.bumped is number
+               and readings.lower is number and readings.upper is number
+               and readings.lower <= session.baseline < session.bumped <= [readings.upper, 23.2] | min
+               and session.bumped - session.baseline <= 0.51 %}
+          {% set same_target = valid_session and comfort is number and ((comfort - session.bumped) | abs) < 0.05 %}
+          {% set has_export = readings.grid_live and readings.grid_w is number and readings.grid_w <= -2500 %}
+          {% set has_pv = readings.pv_live and readings.pv_w is number and readings.pv_w >= 2500 %}
+          {% set sun_window = readings.daylight and 5400 <= readings.sunset - timestamp <= 18000 %}
+          {% set needs_heat = readings.room_live and readings.room is number and bumped is number and bumped - readings.room >= 0.15 %}
+          {% set heating_season = readings.outdoor is number and -25 <= readings.outdoor <= 15 %}
+          {% set can_start = is_state('input_boolean.example_pv_co_enabled', 'on') and readings.memory_ready and not active and session.get("day") != day and readings.controller_live
+               and readings.normal_mode and readings.central_heating and readings.no_alarm and readings.dhw_idle
+               and sun_window and needs_heat and heating_season and has_export and has_pv
+               and readings.forecast_live and readings.forecast_kwh is number and readings.forecast_kwh >= 1.5
+               and comfort is number and readings.lower is number and readings.upper is number
+               and readings.lower <= comfort < bumped <= readings.upper %}
+          {% set should_end = active and (not is_state('input_boolean.example_pv_co_enabled', 'on') or timestamp >= session.until | float(0)
+               or not readings.daylight or not readings.normal_mode or not readings.no_alarm or not readings.central_heating
+               or not readings.room_live or readings.room is none or (valid_session and readings.room >= session.bumped)
+               or not readings.grid_live or readings.grid_w is none or readings.grid_w > 500
+               or not readings.pv_live or readings.pv_w is none or readings.pv_w < 1000) %}
+          {% set decision = "forget" if valid_session and readings.controller_live and comfort is number and not same_target
+               else "restore" if same_target and readings.controller_live and should_end
+               else "start" if can_start else "idle" %}
+          {{ decision == "restore" and session.baseline == previous_value and session.bumped == raised_value }}
+      - action: number.set_value
+        target:
+          entity_id: number.heat_pump_comfort_target
+        data:
+          value: '{{ previous_value }}'
+      - wait_template: '{% set current = states(''number.heat_pump_comfort_target'') | float(none) %}{{ current
+          is number and ((current - previous_value) | abs) < 0.05 }}'
+        timeout: 00:00:45
+        continue_on_timeout: false
+      - action: input_text.set_value
+        target:
+          entity_id: input_text.example_pv_co_session
+        data:
+          value: '{{ {"day": session_day} | to_json }}'
+    - alias: Sprawdź nadwyżkę i podnieś nastawę Komfort
+      conditions:
+      - condition: template
+        value_template: '{{ next_action == "start" }}'
+      sequence:
+      - wait_template: |-
+          {% set timestamp = as_timestamp(now()) %}
+          {% set day = now().strftime('%Y-%m-%d') %}
+          {% set raw_session = states('input_text.example_pv_co_session') | from_json(none) %}
+          {% set session = raw_session if raw_session is mapping else {} %}
+          {% macro recent(entity_id, limit) %}
+            {% set reading = states[entity_id] %}
+            {{ reading is not none and 0 <= timestamp - as_timestamp(reading.last_reported, 0) < limit }}
+          {% endmacro %}
+          {% set readings = dict(
+            memory_ready=raw_session is mapping,
+            comfort=states('number.heat_pump_comfort_target') | float(none),
+            lower=state_attr('number.heat_pump_comfort_target', 'min') | float(none),
+            upper=state_attr('number.heat_pump_comfort_target', 'max') | float(none),
+            room=states('sensor.heating_room_temperature') | float(none),
+            outdoor=states('sensor.outdoor_temperature') | float(none),
+            room_live=recent('sensor.heating_room_temperature', 120) | bool(false),
+            controller_live=is_state('binary_sensor.heat_pump_live', 'on'),
+            normal_mode=is_state('select.heat_pump_heating_mode', '1'),
+            central_heating=is_state('sensor.heat_pump_three_way_valve', 'central_heating'),
+            no_alarm=is_state('binary_sensor.heat_pump_alarm', 'off'),
+            dhw_idle=state_attr('automation.example_pv_dhw', 'current') | int(0) == 0,
+            daylight=is_state('sun.sun', 'above_horizon'),
+            sunset=as_timestamp(state_attr('sun.sun', 'next_setting'), 0),
+            grid_w=states('sensor.grid_power') | float(none),
+            grid_live=recent('sensor.grid_power', 120) | bool(false),
+            pv_w=states('sensor.pv_power') | float(none),
+            pv_live=recent('sensor.pv_power', 120) | bool(false),
+            forecast_kwh=states('sensor.pv_forecast_next_hour') | float(none),
+            forecast_live=recent('sensor.pv_forecast_next_hour', 7200) | bool(false)
+          ) %}
+          {% set comfort = readings.comfort %}
+          {% set bumped = ([comfort + 0.5, 23.2] | min | round(1)) if comfort is number else none %}
+          {% set active = "until" in session %}
+          {% set valid_session = active and session.until is number and session.baseline is number and session.bumped is number
+               and readings.lower is number and readings.upper is number
+               and readings.lower <= session.baseline < session.bumped <= [readings.upper, 23.2] | min
+               and session.bumped - session.baseline <= 0.51 %}
+          {% set same_target = valid_session and comfort is number and ((comfort - session.bumped) | abs) < 0.05 %}
+          {% set has_export = readings.grid_live and readings.grid_w is number and readings.grid_w <= -2500 %}
+          {% set has_pv = readings.pv_live and readings.pv_w is number and readings.pv_w >= 2500 %}
+          {% set sun_window = readings.daylight and 5400 <= readings.sunset - timestamp <= 18000 %}
+          {% set needs_heat = readings.room_live and readings.room is number and bumped is number and bumped - readings.room >= 0.15 %}
+          {% set heating_season = readings.outdoor is number and -25 <= readings.outdoor <= 15 %}
+          {% set can_start = is_state('input_boolean.example_pv_co_enabled', 'on') and readings.memory_ready and not active and session.get("day") != day and readings.controller_live
+               and readings.normal_mode and readings.central_heating and readings.no_alarm and readings.dhw_idle
+               and sun_window and needs_heat and heating_season and has_export and has_pv
+               and readings.forecast_live and readings.forecast_kwh is number and readings.forecast_kwh >= 1.5
+               and comfort is number and readings.lower is number and readings.upper is number
+               and readings.lower <= comfort < bumped <= readings.upper %}
+          {% set should_end = active and (not is_state('input_boolean.example_pv_co_enabled', 'on') or timestamp >= session.until | float(0)
+               or not readings.daylight or not readings.normal_mode or not readings.no_alarm or not readings.central_heating
+               or not readings.room_live or readings.room is none or (valid_session and readings.room >= session.bumped)
+               or not readings.grid_live or readings.grid_w is none or readings.grid_w > 500
+               or not readings.pv_live or readings.pv_w is none or readings.pv_w < 1000) %}
+          {% set decision = "forget" if valid_session and readings.controller_live and comfort is number and not same_target
+               else "restore" if same_target and readings.controller_live and should_end
+               else "start" if can_start else "idle" %}
+          {{ decision != "start" }}
+        timeout: 00:10:00
+        continue_on_timeout: true
+      - condition: template
+        value_template: |-
+          {% set timestamp = as_timestamp(now()) %}
+          {% set day = now().strftime('%Y-%m-%d') %}
+          {% set raw_session = states('input_text.example_pv_co_session') | from_json(none) %}
+          {% set session = raw_session if raw_session is mapping else {} %}
+          {% macro recent(entity_id, limit) %}
+            {% set reading = states[entity_id] %}
+            {{ reading is not none and 0 <= timestamp - as_timestamp(reading.last_reported, 0) < limit }}
+          {% endmacro %}
+          {% set readings = dict(
+            memory_ready=raw_session is mapping,
+            comfort=states('number.heat_pump_comfort_target') | float(none),
+            lower=state_attr('number.heat_pump_comfort_target', 'min') | float(none),
+            upper=state_attr('number.heat_pump_comfort_target', 'max') | float(none),
+            room=states('sensor.heating_room_temperature') | float(none),
+            outdoor=states('sensor.outdoor_temperature') | float(none),
+            room_live=recent('sensor.heating_room_temperature', 120) | bool(false),
+            controller_live=is_state('binary_sensor.heat_pump_live', 'on'),
+            normal_mode=is_state('select.heat_pump_heating_mode', '1'),
+            central_heating=is_state('sensor.heat_pump_three_way_valve', 'central_heating'),
+            no_alarm=is_state('binary_sensor.heat_pump_alarm', 'off'),
+            dhw_idle=state_attr('automation.example_pv_dhw', 'current') | int(0) == 0,
+            daylight=is_state('sun.sun', 'above_horizon'),
+            sunset=as_timestamp(state_attr('sun.sun', 'next_setting'), 0),
+            grid_w=states('sensor.grid_power') | float(none),
+            grid_live=recent('sensor.grid_power', 120) | bool(false),
+            pv_w=states('sensor.pv_power') | float(none),
+            pv_live=recent('sensor.pv_power', 120) | bool(false),
+            forecast_kwh=states('sensor.pv_forecast_next_hour') | float(none),
+            forecast_live=recent('sensor.pv_forecast_next_hour', 7200) | bool(false)
+          ) %}
+          {% set comfort = readings.comfort %}
+          {% set bumped = ([comfort + 0.5, 23.2] | min | round(1)) if comfort is number else none %}
+          {% set active = "until" in session %}
+          {% set valid_session = active and session.until is number and session.baseline is number and session.bumped is number
+               and readings.lower is number and readings.upper is number
+               and readings.lower <= session.baseline < session.bumped <= [readings.upper, 23.2] | min
+               and session.bumped - session.baseline <= 0.51 %}
+          {% set same_target = valid_session and comfort is number and ((comfort - session.bumped) | abs) < 0.05 %}
+          {% set has_export = readings.grid_live and readings.grid_w is number and readings.grid_w <= -2500 %}
+          {% set has_pv = readings.pv_live and readings.pv_w is number and readings.pv_w >= 2500 %}
+          {% set sun_window = readings.daylight and 5400 <= readings.sunset - timestamp <= 18000 %}
+          {% set needs_heat = readings.room_live and readings.room is number and bumped is number and bumped - readings.room >= 0.15 %}
+          {% set heating_season = readings.outdoor is number and -25 <= readings.outdoor <= 15 %}
+          {% set can_start = is_state('input_boolean.example_pv_co_enabled', 'on') and readings.memory_ready and not active and session.get("day") != day and readings.controller_live
+               and readings.normal_mode and readings.central_heating and readings.no_alarm and readings.dhw_idle
+               and sun_window and needs_heat and heating_season and has_export and has_pv
+               and readings.forecast_live and readings.forecast_kwh is number and readings.forecast_kwh >= 1.5
+               and comfort is number and readings.lower is number and readings.upper is number
+               and readings.lower <= comfort < bumped <= readings.upper %}
+          {% set should_end = active and (not is_state('input_boolean.example_pv_co_enabled', 'on') or timestamp >= session.until | float(0)
+               or not readings.daylight or not readings.normal_mode or not readings.no_alarm or not readings.central_heating
+               or not readings.room_live or readings.room is none or (valid_session and readings.room >= session.bumped)
+               or not readings.grid_live or readings.grid_w is none or readings.grid_w > 500
+               or not readings.pv_live or readings.pv_w is none or readings.pv_w < 1000) %}
+          {% set decision = "forget" if valid_session and readings.controller_live and comfort is number and not same_target
+               else "restore" if same_target and readings.controller_live and should_end
+               else "start" if can_start else "idle" %}
+          {{ not wait.completed and decision == "start" }}
+      - variables:
+          baseline: '{{ states(''number.heat_pump_comfort_target'') | float(none) }}'
+          raised: '{{ ([baseline + 0.5, 23.2] | min) | round(1) }}'
+          restore_at: '{{ [as_timestamp(now()) + 3600, as_timestamp(state_attr(''sun.sun'',''next_setting''), 0)
+            - 1800] | min }}'
+          start_day: '{{ now().strftime(''%Y-%m-%d'') }}'
+      - action: input_text.set_value
+        target:
+          entity_id: input_text.example_pv_co_session
+        data:
+          value: '{{ {"baseline": baseline, "bumped": raised, "until": restore_at, "day": start_day} | to_json }}'
+      - condition: template
+        value_template: '{% set current = states(''number.heat_pump_comfort_target'') | float(none) %}{{ current
+          is number and ((current - baseline) | abs) < 0.05 }}'
+      - action: number.set_value
+        target:
+          entity_id: number.heat_pump_comfort_target
+        data:
+          value: '{{ raised }}'
+  mode: single
+  max_exceeded: silent
+  trace:
+    stored_traces: 15

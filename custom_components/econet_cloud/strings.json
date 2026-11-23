@@ -1,0 +1,77 @@
+{
+  "title": "PLUM ecoNET Cloud",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to ecoNET Cloud",
+        "description": "Enter the account used on econetcloud.eu. This integration monitors your ventilation unit and exposes supported speeds, operating modes and comfort temperatures. The password is used only to sign in and is not saved. Home Assistant stores session data needed to renew the connection.",
+        "data": {
+          "username": "ecoNET Cloud email",
+          "password": "ecoNET Cloud account password"
+        }
+      },
+      "installation": {
+        "title": "Select installation",
+        "data": {
+          "installation_id": "Installation"
+        }
+      },
+      "connection": {
+        "title": "Fetch ecoNET Cloud installations",
+        "description": "The account is authenticated. Retry loading the installation data; entering the password again is not required."
+      }
+    },
+    "error": {
+      "invalid_auth": "ecoNET Cloud rejected account authentication.",
+      "session_auth": "Session renewal was rejected. Sign in again.",
+      "additional_auth": "An additional authentication step is required.",
+      "cloud_authorization": "Sign-in succeeded, but access to the installation data was not granted.",
+      "cannot_connect": "Could not connect to ecoNET Cloud.",
+      "no_installations": "No installations were found for this account.",
+      "wrong_account": "This account cannot access the previously selected installation."
+    },
+    "abort": {
+      "already_configured": "This installation is already configured.",
+      "not_found": "The selected installation was not found.",
+      "reauth_successful": "Account authentication was updated."
+    }
+  },
+  "entity": {
+    "select": {
+      "speed": {
+        "name": "Speed",
+        "state": {
+          "pause": "Pause",
+          "speed_1": "Speed 1",
+          "speed_2": "Speed 2",
+          "speed_3": "Speed 3",
+          "boost_1": "Boost 1",
+          "boost_2": "Boost 2"
+        }
+      },
+      "operating_mode": {
+        "name": "Operating mode",
+        "state": {
+          "manual": "Manual",
+          "schedule": "Schedule"
+        }
+      }
+    },
+    "number": {
+      "comfort_1": {
+        "name": "Comfort temperature speed 1"
+      },
+      "comfort_2": {
+        "name": "Comfort temperature speed 2"
+      },
+      "comfort_3": {
+        "name": "Comfort temperature speed 3"
+      }
+    },
+    "button": {
+      "stop_boost": {
+        "name": "End boost"
+      }
+    }
+  }
+}

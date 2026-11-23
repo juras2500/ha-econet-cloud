@@ -1,0 +1,82 @@
+{
+  "editionScreens": [
+    {
+      "id": "edit_work_modes",
+      "tiles": [
+        {
+          "quickEdition": {
+            "editParam": {
+              "parameterName": "u81",
+              "options": {
+                "3": {},
+                "4": {},
+                "5": {},
+                "6": {}
+              }
+            }
+          }
+        },
+        {
+          "quickEdition": {
+            "editParam": {
+              "parameterName": "u6630",
+              "options": {
+                "H1L0": {},
+                "H0L1": {}
+              }
+            }
+          }
+        },
+        {
+          "quickEdition": {
+            "editParam": {
+              "parameterName": "u6639",
+              "options": {
+                "H0L64": {},
+                "H64L384": {}
+              }
+            }
+          }
+        },
+        {
+          "quickEdition": {
+            "editParam": {
+              "parameterName": "u6639",
+              "options": {
+                "H0L128": {},
+                "H128L320": {}
+              }
+            }
+          }
+        },
+        {
+          "quickEdition": {
+            "editParam": {
+              "parameterName": "u6342",
+              "format": "deviceValue",
+              "step": 1
+            }
+          }
+        },
+        {
+          "quickEdition": {
+            "editParam": {
+              "parameterName": "u6343",
+              "format": "deviceValue",
+              "step": 1
+            }
+          }
+        },
+        {
+          "quickEdition": {
+            "editParam": {
+              "parameterName": "u6344",
+              "format": "deviceValue",
+              "step": 1
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
